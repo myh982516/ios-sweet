@@ -9,14 +9,17 @@ import hashlib, os, struct, sys
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import adt  # noqa: E402
 
-# Kernel-managed RAM: above every Qualcomm XPU carve-out (see NOTES.md)
-PHYS_BASE = 0xb0000000
-MEM_SIZE = 0x4d000000
+# Kernel-managed RAM: above every Qualcomm XPU carve-out (see NOTES.md).
+# umi (SM8250, 12 GB): the low bank's carve-outs end at cdsp_secure_heap
+# (0x8e100000 + 0x4600000 = 0x92700000), so start at 0x93000000 and run to
+# the top of the 2 GB bank. The 10 GB upper bank is contiguous.
+PHYS_BASE = 0x93000000
+MEM_SIZE = 0x2d000000
 # --highmem (phone only): the whole upper DDR bank. The live FDT memory node is
-# <0x80000000 2G>, <0x1_00000000 0xfcc00000>; every fixed reserved-memory
+# <0x80000000 2G>, <0x1_00000000 0x280000000>; every fixed reserved-memory
 # carve-out is in the low bank and the dynamic pools are limited below 4G.
 HIGH_PHYS_BASE = 0x100000000
-HIGH_MEM_SIZE = 0xfcc00000
+HIGH_MEM_SIZE = 0x280000000
 # /arm-io children are relative to this; it must not be 0 (serial_init bails)
 SOC_BASE = 0x01000000
 

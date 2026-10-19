@@ -3,19 +3,26 @@ name: shim
 on:
   workflow_dispatch:
     inputs:
-      payload:
-        description: "optional xnu payload artifact name (leave empty for the diagnostics shim)"
-        required: false
-        default: ""
+      with_payload:
+        description: "bundle the latest xnu kernel as the shim payload (boots XNU)"
+        type: boolean
+        default: true
       extra_cflags:
-        description: "extra CFLAGS, e.g. -DUMI_STAGE0"
+        description: "extra CFLAGS, e.g. -DUMI_STAGE1"
         required: false
         default: ""
+      cmdline:
+        description: "XNU boot-args"
+        required: false
+        default: "debug=0xc serial=3 cpus=1 keepsyms=1 -enable_kprintf_spam -noprogress"
 
 jobs:
   build:
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    permissions:
+      contents: read
+      actions: read
     steps:
       - uses: actions/checkout@v4
 
@@ -30,11 +37,39 @@ jobs:
           sudo install -m 0755 tools/mkboot_v2.py /usr/local/bin/mkbootimg
           mkbootimg --help | head -3
 
+      - name: Fetch latest xnu kernel
+        if: ${{ inputs.with_payload }}
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          RUN_ID=$(gh run list --repo "$GITHUB_REPOSITORY" --workflow=xnu.yml \
+                     --status success --limit 1 --json databaseId -q '.[0].databaseId')
+          echo "xnu run: $RUN_ID"
+          gh run download "$RUN_ID" --repo "$GITHUB_REPOSITORY" -n xnu-kernel -D kernel
+          ls -l kernel
+
+      - name: Build ADT and payload
+        if: ${{ inputs.with_payload }}
+        run: |
+          set -euo pipefail
+          python3 tools/mkadt.py umi.adt --highmem
+          ls -l umi.adt
+          KERNEL=$(ls kernel/kernel.* | grep -v '\.link' | head -1)
+          echo "kernel: $KERNEL"
+          python3 tools/mkpayload.py "$KERNEL" umi.adt payload.bin --cmdline "${{ inputs.cmdline }}"
+          ls -l payload.bin
+
       - name: Build shim
         working-directory: shim
         env:
           EXTRA_CFLAGS: ${{ inputs.extra_cflags }}
-        run: bash build.sh
+        run: |
+          if [ "${{ inputs.with_payload }}" = "true" ]; then
+            bash build.sh ../payload.bin
+          else
+            bash build.sh
+          fi
 
       - name: Inspect image
         working-directory: shim
@@ -54,5 +89,7 @@ jobs:
       - uses: actions/upload-artifact@v4
         with:
           name: shim-boot
-          path: shim/out/shim-boot.img
+          path: |
+            shim/out/shim-boot.img
+            umi.adt
           if-no-files-found: error
