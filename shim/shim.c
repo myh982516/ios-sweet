@@ -375,9 +375,13 @@ void shim_main(uint64_t dtb)
 	struct mmu_info mi;
 
 #ifdef UMI_STAGE_T
-	/* Timing probe: no display, no drivers. If fastboot comes back after ~60 s
-	 * instead of a few seconds, the shim itself is executing on this SoC. */
-	delay_ms(60000);
+	/* Timing probe: pet the APSS watchdog (sm8250: 0x17c10000) every 500 ms
+	 * while waiting. If fastboot now returns after ~60 s instead of ~4 s, the
+	 * earlier resets were the watchdog, not a fault. */
+	for (int i = 0; i < 120; i++) {
+		wr32(0x17c10004UL, 1);	/* WDT0_RST */
+		delay_ms(500);
+	}
 	reset(20);
 #endif
 
