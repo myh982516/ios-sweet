@@ -208,7 +208,7 @@ new file mode 100644
 +	uint64_t deadline;
 +	nanoseconds_to_absolutetime(CMD_TIMEOUT_NS, &deadline);
 +	deadline += mach_absolute_time();
-+	while (ufs_rd(REG_UTRLDBR) & 1) {
++	for (int spin = 0; spin < 20000 && (ufs_rd(REG_UTRLDBR) & 1); spin++) {
 +		if (mach_absolute_time() > deadline) {
 +			ufs_wr(REG_UTRLCLR, ~1u);
 +			printf("SWEET UFS: command 0x%02x timed out\n", cdb[0]);
@@ -529,8 +529,8 @@ new file mode 100644
 +	su.lun = 0;
 +	su.secsize = DEV_BSIZE;
 +
-+	lck_mtx_lock(&sweet_ufs_lock);
-+	error = ufs_take_over_host();
++	printf("SWEET UFS: init, takeover"); lck_mtx_lock(&sweet_ufs_lock);
++	error = ufs_take_over_host(); printf("SWEET UFS: takeover rc=%d", error);
 +	if (!error) {
 +		static const uint8_t tur[6] = { 0x00 };
 +		/* The first command after the bootloader may report a unit attention. */
@@ -538,7 +538,7 @@ new file mode 100644
 +		}
 +	}
 +	if (!error) {
-+		error = ufs_find_partition(want);
++		printf("SWEET UFS: find part"); error = ufs_find_partition(want);
 +	}
 +	lck_mtx_unlock(&sweet_ufs_lock);
 +	if (error) {
