@@ -375,17 +375,14 @@ void shim_main(uint64_t dtb)
 	struct mmu_info mi;
 
 #ifdef UMI_STAGE2
-	/* MMU on, then the first real UFS transfer (GPT header read). */
+	/* UFS read with the MMU still off: the payload path never needs the
+	 * shim's 16K-granule map, and TG16 is optional on this SoC. */
 	con_clear(BLUE);
-	con_str("SHIM", "umi stage2: mmu + ufs read");
+	con_str("SHIM", "umi stage2: ufs read, mmu off");
 	con_skip();
-	int mrc = mmu_enable(&mi);
-	con_hex("MMU rc", mrc);
-	con_hex("PAR fb", mmu_probe(FB_PHYS + 0x1000));
-	con_hex("PAR dtb", mmu_probe(dtb));
-	con_hex("PAR ufs", mmu_probe(0x01d84000UL));
+	con_hex("DTB", dtb);
+	con_hex("MMFR0", rsr("id_aa64mmfr0_el1"));
 	con_skip();
-	con_str("UFS", "starting legacy probe");
 	test_ufs();
 	con_skip();
 	con_str("HALT", "vol- + power for fastboot");
