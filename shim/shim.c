@@ -374,6 +374,38 @@ void shim_main(uint64_t dtb)
 {
 	struct mmu_info mi;
 
+#ifdef UMI_STAGE1
+	/* Read-only hardware survey. Every line is printed before the next step,
+	 * so a hang leaves the last completed probe visible on screen. */
+	con_clear(BLUE);
+	con_str("SHIM", "umi stage1: hardware survey");
+	con_skip();
+	con_hex("DTB", dtb);
+	con_hex("DTB magic", rd32(dtb));
+	con_hex("DTB size", rd32(dtb + 4));
+	con_skip();
+	con_hex("CNTFRQ", rsr("cntfrq_el0"));
+	con_hex("MPIDR", rsr("mpidr_el1"));
+	con_hex("MIDR", rsr("midr_el1"));
+	con_skip();
+	con_hex("PSCI ver", smc(PSCI_VERSION, 0, 0, 0));
+	con_hex("SMCCC ver", smc(SMCCC_VERSION, 0, 0, 0));
+	con_skip();
+	/* GICD_PIDR2 tells us the GIC architecture version. */
+	con_hex("GICD PIDR2", rd32(GICD_BASE + 0xfe8));
+	con_hex("GICD TYPER", rd32(GICD_BASE + 0x004));
+	con_skip();
+	/* UFSHCI identity registers only: no doorbell, no transfer. */
+	con_hex("UFS CAP", rd32(0x01d84000UL));
+	con_hex("UFS VER", rd32(0x01d84008UL));
+	con_hex("UFS HCS", rd32(0x01d84030UL));
+	con_hex("UFS IS", rd32(0x01d84020UL));
+	con_skip();
+	con_str("HALT", "vol- + power for fastboot");
+	for (;;)
+		__asm__ volatile("wfi");
+#endif
+
 #ifdef UMI_STAGE_D
 	/* Disable the APSS watchdog instead of petting it, then idle for 60 s.
 	 * Surviving past ~3 s means our code really runs and the WDT was cutting
