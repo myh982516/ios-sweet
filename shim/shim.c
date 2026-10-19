@@ -374,6 +374,25 @@ void shim_main(uint64_t dtb)
 {
 	struct mmu_info mi;
 
+#ifdef UMI_STAGE2
+	/* MMU on, then the first real UFS transfer (GPT header read). */
+	con_clear(BLUE);
+	con_str("SHIM", "umi stage2: mmu + ufs read");
+	con_skip();
+	int mrc = mmu_enable(&mi);
+	con_hex("MMU rc", mrc);
+	con_hex("PAR fb", mmu_probe(FB_PHYS + 0x1000));
+	con_hex("PAR dtb", mmu_probe(dtb));
+	con_hex("PAR ufs", mmu_probe(0x01d84000UL));
+	con_skip();
+	con_str("UFS", "starting legacy probe");
+	test_ufs();
+	con_skip();
+	con_str("HALT", "vol- + power for fastboot");
+	for (;;)
+		__asm__ volatile("wfi");
+#endif
+
 #ifdef UMI_STAGE1
 	/* Read-only hardware survey. Every line is printed before the next step,
 	 * so a hang leaves the last completed probe visible on screen. */
