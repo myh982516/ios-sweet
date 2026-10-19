@@ -374,6 +374,16 @@ void shim_main(uint64_t dtb)
 {
 	struct mmu_info mi;
 
+#ifdef UMI_STAGE_D
+	/* Disable the APSS watchdog instead of petting it, then idle for 60 s.
+	 * Surviving past ~3 s means our code really runs and the WDT was cutting
+	 * every previous attempt short. */
+	wr32(0x17c10000UL, 0);	/* WDT0_CTL = 0 */
+	for (int i = 0; i < 12; i++)
+		delay_ms(5000);
+	reset(20);
+#endif
+
 #ifdef UMI_STAGE_T
 	/* Timing probe: pet the APSS watchdog (sm8250: 0x17c10000) every 500 ms
 	 * while waiting. If fastboot now returns after ~60 s instead of ~4 s, the
