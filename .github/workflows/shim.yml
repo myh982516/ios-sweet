@@ -1,0 +1,52 @@
+name: shim
+
+on:
+  workflow_dispatch:
+    inputs:
+      payload:
+        description: "optional xnu payload artifact name (leave empty for the diagnostics shim)"
+        required: false
+        default: ""
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Toolchain
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq gcc-aarch64-linux-gnu binutils-aarch64-linux-gnu cpio
+          aarch64-linux-gnu-gcc --version | head -1
+
+      - name: Install boot image packer as mkbootimg
+        run: |
+          sudo install -m 0755 tools/mkboot_v2.py /usr/local/bin/mkbootimg
+          mkbootimg --help | head -3
+
+      - name: Build shim
+        working-directory: shim
+        run: bash build.sh
+
+      - name: Inspect image
+        working-directory: shim
+        run: |
+          ls -l out/Image out/shim-boot.img
+          python3 - <<'EOF'
+          import struct
+          d = open('out/shim-boot.img','rb').read()
+          magic = d[:8]
+          ksize, kaddr, rsize, raddr = struct.unpack('<IIII', d[8:24])
+          page, hver = struct.unpack('<II', d[36:44])
+          print('magic', magic, 'kernel', ksize, 'ramdisk', rsize, 'page', page, 'hdrver', hver)
+          assert magic == b'ANDROID!' and page == 4096 and hver == 2
+          print('header ok, total', len(d))
+          EOF
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: shim-boot
+          path: shim/out/shim-boot.img
+          if-no-files-found: error
