@@ -374,6 +374,22 @@ void shim_main(uint64_t dtb)
 {
 	struct mmu_info mi;
 
+#ifdef UMI_STAGE0
+	/* Bring-up bisection: prove the shim executes and the splash FB is right. */
+	con_clear(GREEN);
+	con_str("SHIM", "umi stage0: alive, mmu off");
+	con_skip();
+	con_hex("DTB", dtb);
+	con_hex("FB", FB_PHYS);
+	con_hex("CNTFRQ", rsr("cntfrq_el0"));
+	con_hex("MPIDR", rsr("mpidr_el1"));
+	con_hex("SCTLR", rsr("sctlr_el1"));
+	con_skip();
+	con_str("STAGE0", "hold 180s then reset");
+	delay_ms(180000);
+	reset(20);
+#endif
+
 	/* An xnu payload in the ramdisk means: boot it (MMU stays off). */
 	stage = "loader";
 	con_clear(RED);

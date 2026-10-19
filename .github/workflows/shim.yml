@@ -7,6 +7,10 @@ on:
         description: "optional xnu payload artifact name (leave empty for the diagnostics shim)"
         required: false
         default: ""
+      extra_cflags:
+        description: "extra CFLAGS, e.g. -DUMI_STAGE0"
+        required: false
+        default: ""
 
 jobs:
   build:
@@ -28,6 +32,8 @@ jobs:
 
       - name: Build shim
         working-directory: shim
+        env:
+          EXTRA_CFLAGS: ${{ inputs.extra_cflags }}
         run: bash build.sh
 
       - name: Inspect image
