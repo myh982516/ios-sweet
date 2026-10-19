@@ -374,6 +374,20 @@ void shim_main(uint64_t dtb)
 {
 	struct mmu_info mi;
 
+#ifdef UMI_STAGE3
+	/* Did the 16 GiB iOS root image land intact in userdata? */
+	con_clear(BLUE);
+	con_str("SHIM", "umi stage3: root image check");
+	con_skip();
+	test_ufs();
+	con_skip();
+	check_root_image();
+	con_skip();
+	con_str("HALT", "vol- + power for fastboot");
+	for (;;)
+		__asm__ volatile("wfi");
+#endif
+
 #ifdef UMI_STAGE2
 	/* UFS read with the MMU still off: the payload path never needs the
 	 * shim's 16K-granule map, and TG16 is optional on this SoC. */

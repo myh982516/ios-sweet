@@ -264,3 +264,73 @@ void test_ufs(void)
 		return;
 	list_partitions(elba, nent);
 }
+
+/* Diagnostic: is the 16 GiB iOS root image at the start of userdata complete?
+ * Checks the HFS+ volume header at +1024 and the alternate header 1024 bytes
+ * from the end of a 16 GiB volume. Case-sensitive volumes sign "HX". */
+void check_root_image(void)
+{
+	uint32_t ocs = 0, st = 0;
+	uint8_t cdb[10] = { 0x28, 0, 0, 0, 0, 0, 0, 0, 2, 0 };
+
+	if (scsi(0, cdb, sizeof(cdb), data, 2 * BLOCK, &ocs, &st)) {
+		con_str("HFS", "gpt read failed");
+		return;
+	}
+	const uint8_t *gpt = data + BLOCK;
+	uint32_t nent = gpt[80] | gpt[81] << 8 | gpt[82] << 16;
+	uint32_t esz = gpt[84] | gpt[85] << 8;
+	uint32_t elba = gpt[72] | gpt[73] << 8;
+	if (esz != 128 || nent > 128) {
+		con_str("HFS", "bad gpt");
+		return;
+	}
+
+	uint64_t first = 0;
+	int found = 0;
+	for (uint32_t base = 0; base < nent && !found; base += 64) {
+		uint32_t cnt = nent - base > 64 ? 64 : nent - base;
+		uint32_t lba = elba + base * 128 / 512;
+		uint32_t secs = (cnt * 128 + 511) / 512;
+		cdb[2] = lba >> 24; cdb[3] = lba >> 16; cdb[4] = lba >> 8; cdb[5] = lba;
+		cdb[7] = secs >> 8; cdb[8] = secs;
+		if (scsi(0, cdb, sizeof(cdb), data, secs * 512, &ocs, &st)) {
+			con_str("HFS", "entry read failed");
+			return;
+		}
+		for (uint32_t i = 0; i < cnt; i++) {
+			const uint8_t *e = data + i * 128;
+			const uint8_t *nm = e + 56;
+			if (nm[0] == 'u' && nm[2] == 's' && nm[4] == 'e' && nm[6] == 'r' &&
+			    nm[8] == 'd' && nm[10] == 'a' && nm[12] == 't' && nm[14] == 'a') {
+				for (int k = 0; k < 8; k++)
+					first |= (uint64_t)e[32 + k] << (8 * k);
+				found = 1;
+				break;
+			}
+		}
+	}
+	if (!found) {
+		con_str("HFS", "no userdata entry");
+		return;
+	}
+	con_hex2("HFS", "start=", (uint32_t)first, "gib=", 16);
+
+	uint32_t lba = (uint32_t)first;
+	cdb[2] = lba >> 24; cdb[3] = lba >> 16; cdb[4] = lba >> 8; cdb[5] = lba;
+	cdb[7] = 0; cdb[8] = 8;
+	if (scsi(0, cdb, sizeof(cdb), data, 4096, &ocs, &st)) {
+		con_str("HFS", "head read failed");
+		return;
+	}
+	con_hex2("HFS head", "sig=", (data[1024] << 8) | data[1025],
+		 "blksz=", (data[1040] << 24) | (data[1041] << 16) | (data[1042] << 8) | data[1043]);
+
+	uint32_t last = (uint32_t)first + (16u * 1024 * 1024 * 1024 / 512) - 8;
+	cdb[2] = last >> 24; cdb[3] = last >> 16; cdb[4] = last >> 8; cdb[5] = last;
+	if (scsi(0, cdb, sizeof(cdb), data, 4096, &ocs, &st)) {
+		con_str("HFS", "tail read failed");
+		return;
+	}
+	con_hex2("HFS tail", "sig=", (data[3072] << 8) | data[3073], "off=", 3072);
+}
