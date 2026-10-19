@@ -19,6 +19,21 @@ _head:
 	.text
 	.globl _start
 _start:
+#ifdef UMI_HANG
+	/* Did ABL actually jump here? Busy-wait ~40 s, then PSCI SYSTEM_RESET.
+	 * Observing fastboot return at ~40 s (not ~4 s) proves execution. */
+	mov	x3, #50
+1:	mov	x2, #0x40000000
+2:	subs	x2, x2, #1
+	b.ne	2b
+	subs	x3, x3, #1
+	b.ne	1b
+	movz	x0, #0x8400, lsl #16
+	movk	x0, #0x0009
+	smc	#0
+3:	wfe
+	b	3b
+#endif
 	msr	daifset, #0xf
 	mov	x19, x0			/* DTB pointer from ABL */
 	msr	spsel, #1
