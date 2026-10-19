@@ -374,6 +374,13 @@ void shim_main(uint64_t dtb)
 {
 	struct mmu_info mi;
 
+#ifdef UMI_STAGE_T
+	/* Timing probe: no display, no drivers. If fastboot comes back after ~60 s
+	 * instead of a few seconds, the shim itself is executing on this SoC. */
+	delay_ms(60000);
+	reset(20);
+#endif
+
 #ifdef UMI_STAGE0
 	/* Bring-up bisection: prove the shim executes and the splash FB is right. */
 	con_clear(GREEN);
