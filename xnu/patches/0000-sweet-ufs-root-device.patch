@@ -204,7 +204,7 @@ new file mode 100644
 +	}
 +	__builtin_arm_dsb(0xf);
 +
-+	ufs_wr(REG_UTRLDBR, 1);
++	ufs_wr(REG_UTRLDBR, 1); printf(" db=0x%x t=%llu", ufs_rd(REG_UTRLDBR), mach_absolute_time());
 +	uint64_t deadline;
 +	nanoseconds_to_absolutetime(CMD_TIMEOUT_NS, &deadline);
 +	deadline += mach_absolute_time();
@@ -214,7 +214,7 @@ new file mode 100644
 +			printf("SWEET UFS: command 0x%02x timed out\n", cdb[0]);
 +			return ETIMEDOUT;
 +		}
-+		delay(1);
++		for (volatile int d = 0; d < 20000; d++) { }
 +	}
 +	__builtin_arm_dsb(0xf);
 +	ufs_wr(REG_IS, ufs_rd(REG_IS));         /* acknowledge completion status */
