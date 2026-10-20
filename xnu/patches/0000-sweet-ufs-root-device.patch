@@ -96,8 +96,8 @@ new file mode 100644
 +#define HCS_UTRLRDY     (1u << 1)
 +
 +#define UFS_BLOCK       4096u
-+#define BOUNCE_SIZE     (1u << 20)
-+#define PRDT_CHUNK      (256u << 10)            /* PRDT byte count field: 18 bits */
++#define BOUNCE_SIZE     (64u << 10)
++#define PRDT_CHUNK      (64u << 10)            /* PRDT byte count field: 18 bits */
 +#define PRDT_MAX        (BOUNCE_SIZE / PRDT_CHUNK)
 +#define CMD_TIMEOUT_NS  (5ull * NSEC_PER_SEC)
 +
