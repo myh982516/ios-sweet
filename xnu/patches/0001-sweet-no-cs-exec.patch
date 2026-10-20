@@ -6,7 +6,7 @@
  
 +	/* SWEET: skip code signing enforcement, treat every executable as a
 +	 * platform binary and keep it valid, for the umi research bring-up. */
-+	proc_csflags_set(p, CS_PLATFORM_BINARY | CS_VALID);
++	proc_csflags_set(p, CS_SIGNED | CS_PLATFORM_BINARY | CS_VALID);
 +	printf("SWEET: process_signature bypassed for %s\n", p->p_name);
 +	return 0;
 +
