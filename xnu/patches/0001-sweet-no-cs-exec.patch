@@ -1,0 +1,13 @@
+--- a/bsd/kern/kern_exec.c
++++ b/bsd/kern/kern_exec.c
+@@ -7338,6 +7338,10 @@
+ 	const int vfexec = 0;
+ 	os_reason_t signature_failure_reason = OS_REASON_NULL;
+ 
++	/* SWEET: skip code signing enforcement for this platform (research). */
++	printf("SWEET: process_signature bypassed for %s\n", p->p_name);
++	return 0;
++
+ 	/*
+ 	 * Override inherited code signing flags with the
+ 	 * ones for the process that is being successfully
