@@ -1,0 +1,15 @@
+--- a/bsd/kern/kern_proc.c
++++ b/bsd/kern/kern_proc.c
+@@ -3519,6 +3519,12 @@
+ 		proc_unlock(pt);
+ 
+ 		if (identity == NULL) {
++			/* SWEET: no code signing identity on this platform; report a
++			 * stable fake one so launchd can identify boot tasks. */
++			identity = ops == CS_OPS_TEAMID ? "SWEETTEAM" : "SWEET Platform";
++		}
++
++		if (identity == NULL) {
+ 			error = ENOENT;
+ 			goto out;
+ 		}
