@@ -517,7 +517,7 @@ new file mode 100644
 +
 +	su.regs = ml_io_map(reg[0], reg[1]); printf(" mapped");
 +	if (kmem_alloc_contig(kernel_map, &su.dma, DMA_SIZE, PAGE_MASK, 0, 0,
-+	    KMA_DATA | KMA_ZERO | KMA_PERMANENT, VM_KERN_MEMORY_IOKIT) != KERN_SUCCESS) {
++	    KMA_DATA | KMA_ZERO | KMA_PERMANENT | KMA_NOPAGEWAIT, VM_KERN_MEMORY_IOKIT) != KERN_SUCCESS) {
 +		printf("SWEET UFS: no contiguous DMA memory\n");
 +		return ENOMEM;
 +	}
