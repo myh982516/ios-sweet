@@ -4,9 +4,9 @@
  	const int vfexec = 0;
  	os_reason_t signature_failure_reason = OS_REASON_NULL;
  
-+	/* SWEET: skip code signing enforcement and treat every executable
-+	 * as a platform binary, for the umi research bring-up. */
-+	proc_csflags_set(p, CS_PLATFORM_BINARY);
++	/* SWEET: skip code signing enforcement, treat every executable as a
++	 * platform binary and keep it valid, for the umi research bring-up. */
++	proc_csflags_set(p, CS_PLATFORM_BINARY | CS_VALID);
 +	printf("SWEET: process_signature bypassed for %s\n", p->p_name);
 +	return 0;
 +
