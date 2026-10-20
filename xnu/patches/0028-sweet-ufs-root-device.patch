@@ -20,7 +20,7 @@ diff --git a/iokit/bsddev/IOKitBSDInit.cpp b/iokit/bsddev/IOKitBSDInit.cpp
 +//
 +//	SWEET: root on a GPT partition of the internal UFS (bsd/dev/sweet_ufs.c)
 +//
-+	if (strcmp(rdBootVar, "ufsroot0") == 0) {
++	IOLog("SWEET: IOFindBSDRoot rd=%s\n", rdBootVar); if (strcmp(rdBootVar, "ufsroot0") == 0) {
 +		extern int sweet_ufs_rootdev(dev_t *dev);
 +		OSSafeReleaseNULL(matching);
 +		int ufs_error = sweet_ufs_rootdev(root);
