@@ -501,7 +501,7 @@ new file mode 100644
 +static int
 +sweet_ufs_init(void)
 +{
-+	DTEntry node;
++	DTEntry node; printf("SWEET UFS: init");
 +	uintptr_t const *reg = NULL;
 +	unsigned int size = 0;
 +	char want[64] = "userdata";
@@ -515,7 +515,7 @@ new file mode 100644
 +	}
 +	PE_parse_boot_argn("ufsroot", want, sizeof(want));
 +
-+	su.regs = ml_io_map(reg[0], reg[1]);
++	su.regs = ml_io_map(reg[0], reg[1]); printf(" mapped");
 +	if (kmem_alloc_contig(kernel_map, &su.dma, DMA_SIZE, PAGE_MASK, 0, 0,
 +	    KMA_DATA | KMA_ZERO | KMA_PERMANENT, VM_KERN_MEMORY_IOKIT) != KERN_SUCCESS) {
 +		printf("SWEET UFS: no contiguous DMA memory\n");
@@ -525,7 +525,7 @@ new file mode 100644
 +	if (!pn) {
 +		return ENOMEM;
 +	}
-+	su.dma_pa = ptoa_64(pn);
++	su.dma_pa = ptoa_64(pn); printf(" dma");
 +	su.lun = 0;
 +	su.secsize = DEV_BSIZE;
 +
