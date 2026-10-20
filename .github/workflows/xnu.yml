@@ -120,5 +120,7 @@ jobs:
         if: always()
         with:
           name: xnu-kernel
-          path: out/
+          path: |
+            out/kernel.*
+            out/SHA256SUMS
           if-no-files-found: warn
