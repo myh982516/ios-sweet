@@ -1,4 +1,4 @@
-diff --git a/bsd/conf/files b/bsd/conf/files
+﻿diff --git a/bsd/conf/files b/bsd/conf/files
 --- a/bsd/conf/files
 +++ b/bsd/conf/files
 @@ -104,6 +104,7 @@
@@ -20,7 +20,7 @@ diff --git a/iokit/bsddev/IOKitBSDInit.cpp b/iokit/bsddev/IOKitBSDInit.cpp
 +//
 +//	SWEET: root on a GPT partition of the internal UFS (bsd/dev/sweet_ufs.c)
 +//
-+	IOLog("SWEET: IOFindBSDRoot rd=%s\n", rdBootVar); if (strcmp(rdBootVar, "ufsroot0") == 0) {
++	if (strcmp(rdBootVar, "ufsroot0") == 0) {
 +		extern int sweet_ufs_rootdev(dev_t *dev);
 +		OSSafeReleaseNULL(matching);
 +		int ufs_error = sweet_ufs_rootdev(root);
@@ -96,8 +96,8 @@ new file mode 100644
 +#define HCS_UTRLRDY     (1u << 1)
 +
 +#define UFS_BLOCK       4096u
-+#define BOUNCE_SIZE     (64u << 10)
-+#define PRDT_CHUNK      (64u << 10)            /* PRDT byte count field: 18 bits */
++#define BOUNCE_SIZE     (1u << 20)
++#define PRDT_CHUNK      (256u << 10)            /* PRDT byte count field: 18 bits */
 +#define PRDT_MAX        (BOUNCE_SIZE / PRDT_CHUNK)
 +#define CMD_TIMEOUT_NS  (5ull * NSEC_PER_SEC)
 +
@@ -204,17 +204,17 @@ new file mode 100644
 +	}
 +	__builtin_arm_dsb(0xf);
 +
-+	ufs_wr(REG_UTRLDBR, 1); printf(" db=0x%x t=%llu", ufs_rd(REG_UTRLDBR), mach_absolute_time());
++	ufs_wr(REG_UTRLDBR, 1);
 +	uint64_t deadline;
 +	nanoseconds_to_absolutetime(CMD_TIMEOUT_NS, &deadline);
 +	deadline += mach_absolute_time();
-+	for (int spin = 0; spin < 20000 && (ufs_rd(REG_UTRLDBR) & 1); spin++) {
++	while (ufs_rd(REG_UTRLDBR) & 1) {
 +		if (mach_absolute_time() > deadline) {
 +			ufs_wr(REG_UTRLCLR, ~1u);
 +			printf("SWEET UFS: command 0x%02x timed out\n", cdb[0]);
 +			return ETIMEDOUT;
 +		}
-+		for (volatile int d = 0; d < 20000; d++) { }
++		delay(1);
 +	}
 +	__builtin_arm_dsb(0xf);
 +	ufs_wr(REG_IS, ufs_rd(REG_IS));         /* acknowledge completion status */
@@ -501,7 +501,7 @@ new file mode 100644
 +static int
 +sweet_ufs_init(void)
 +{
-+	DTEntry node; printf("SWEET UFS: init");
++	DTEntry node;
 +	uintptr_t const *reg = NULL;
 +	unsigned int size = 0;
 +	char want[64] = "userdata";
@@ -515,9 +515,9 @@ new file mode 100644
 +	}
 +	PE_parse_boot_argn("ufsroot", want, sizeof(want));
 +
-+	su.regs = ml_io_map(reg[0], reg[1]); printf(" mapped");
++	su.regs = ml_io_map(reg[0], reg[1]);
 +	if (kmem_alloc_contig(kernel_map, &su.dma, DMA_SIZE, PAGE_MASK, 0, 0,
-+	    KMA_DATA | KMA_ZERO | KMA_PERMANENT | KMA_NOPAGEWAIT, VM_KERN_MEMORY_IOKIT) != KERN_SUCCESS) {
++	    KMA_DATA | KMA_ZERO | KMA_PERMANENT, VM_KERN_MEMORY_IOKIT) != KERN_SUCCESS) {
 +		printf("SWEET UFS: no contiguous DMA memory\n");
 +		return ENOMEM;
 +	}
@@ -525,12 +525,12 @@ new file mode 100644
 +	if (!pn) {
 +		return ENOMEM;
 +	}
-+	su.dma_pa = ptoa_64(pn); printf(" dma");
++	su.dma_pa = ptoa_64(pn);
 +	su.lun = 0;
 +	su.secsize = DEV_BSIZE;
 +
-+	printf("SWEET UFS: init, takeover"); lck_mtx_lock(&sweet_ufs_lock);
-+	error = ufs_take_over_host(); printf("SWEET UFS: takeover rc=%d", error);
++	lck_mtx_lock(&sweet_ufs_lock);
++	error = ufs_take_over_host();
 +	if (!error) {
 +		static const uint8_t tur[6] = { 0x00 };
 +		/* The first command after the bootloader may report a unit attention. */
@@ -538,7 +538,7 @@ new file mode 100644
 +		}
 +	}
 +	if (!error) {
-+		printf("SWEET UFS: find part"); error = ufs_find_partition(want);
++		error = ufs_find_partition(want);
 +	}
 +	lck_mtx_unlock(&sweet_ufs_lock);
 +	if (error) {
