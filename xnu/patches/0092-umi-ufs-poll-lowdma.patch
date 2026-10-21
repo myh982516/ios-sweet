@@ -14,7 +14,10 @@
 -		nanoseconds_to_absolutetime(CMD_SPIN_NS, &spin_until);
 -		spin_until += mach_absolute_time();
 -		nanoseconds_to_absolutetime(CMD_SLEEP_NS, &sleep_interval);
--	}
++	/* SWEET: bounded busy poll. Timer based waits do not wake reliably on
++	 * this board, which makes the transfer look like an infinite hang. */
++	for (uint32_t spin = 0; spin < 50000000 && (ufs_rd(REG_UTRLDBR) & 1); spin++) {
+ 	}
 -	while (ufs_rd(REG_UTRLDBR) & 1) {
 -		uint64_t now = mach_absolute_time();
 -		if (now > deadline) {
@@ -32,10 +35,6 @@
 -		} else {
 -			delay(1);
 -		}
-+	/* SWEET: bounded busy poll. Timer based waits do not wake reliably on
-+	 * this board, which makes the transfer look like an infinite hang. */
-+	for (uint32_t spin = 0; spin < 50000000 && (ufs_rd(REG_UTRLDBR) & 1); spin++) {
-+	}
 +	if (ufs_rd(REG_UTRLDBR) & 1) {
 +		ufs_wr(REG_UTRLCLR, ~1u);
 +		printf("SWEET UFS: command 0x%02x timed out\n", cdb[0]);
@@ -43,12 +42,3 @@
  	}
  	__builtin_arm_dsb(0xf);
  	ufs_wr(REG_IS, ufs_rd(REG_IS));         /* acknowledge completion status */
-@@ -610,7 +590,7 @@
- 
- 	su.regs = ml_io_map(reg[0], reg[1]);
- 	printf(" map");
--	if (kmem_alloc_contig(kernel_map, &su.dma, DMA_SIZE, PAGE_MASK, 0, 0,
-+	if (kmem_alloc_contig(kernel_map, &su.dma, DMA_SIZE, PAGE_MASK, 0, 0xFFFFFFFF,
- 	    KMA_DATA | KMA_ZERO | KMA_PERMANENT | KMA_NOPAGEWAIT, VM_KERN_MEMORY_IOKIT) != KERN_SUCCESS) {
- 		printf("SWEET UFS: no contiguous DMA memory\n");
- 		return ENOMEM;
